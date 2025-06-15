@@ -36,8 +36,8 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:4000',
     'http://localhost:4001',
-    'https://nucleus-edte.vercel.app/',
-    'https://nucleus-nine-zeta.vercel.app/',
+    'https://nucleus-edte.vercel.app',
+    'https://nucleus-nine-zeta.vercel.app',
     'https://nucleusbackend.onrender.com'
 ];
 

@@ -33,22 +33,24 @@ app.use(cookieParser());
 // )
 
 const allowedOrigins = [
-    "http://localhost:3000", // For local development
-    "https://nucleuset-3jhf.onrender.com"  // For Render deployment
+    'http://localhost:3000',
+    'http://localhost:4000',
+    'http://localhost:4001',
+    'https://nucleus-edte.vercel.app/',
+    'https://nucleus-nine-zeta.vercel.app/',
+    'https://nucleusbackend.onrender.com'
 ];
 
-app.use(
-    cors({
-        origin: function (origin, callback) {
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error("Not allowed by CORS"));
-            }
-        },
-        credentials: true,
-    })
-);
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            let msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+}));
 
 app.use(
     fileUpload({
@@ -69,27 +71,12 @@ app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/qanda", message);
 
-//def route
-
-// --------------------------deployment------------------------------
-
-const __dirname1 = path.resolve();
-
-// if (process.env.NODE_ENV === "production") {
-//     app.use(express.static(path.join(__dirname1, "/build")));
-//     app.get("*", (req, res) =>
-//         res.sendFile(path.resolve(__dirname1, "build", "index.html"))
-//     );
-// }
 app.get("/", (req, res) => {
     return res.json({
         success: true,
         message: "Server is running",
     });
 });
-
-
-// -------------------------deployment------------------------------
 
 app.get("/", (req, res) => {
     return res.json({

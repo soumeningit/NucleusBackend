@@ -89,6 +89,8 @@ exports.capturePayment = async (req, res) => {
                 })
         }
 
+        order.secret_id = process.env.RAZORPAY_KEY_ID;
+
         return res.status(200)
             .json({
                 success: true,

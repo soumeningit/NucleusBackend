@@ -15,7 +15,6 @@ const fileUpload = require("express-fileupload");
 const dotenv = require("dotenv");
 const adminRoutes = require('./routes/Admin')
 const message = require('./routes/Message')
-const path = require("path");
 
 dotenv.config();
 const PORT = process.env.PORT || 5000;
@@ -25,12 +24,7 @@ dbConnect();
 //middlewares
 app.use(express.json());
 app.use(cookieParser());
-// app.use(
-//     cors({
-//         origin: "http://localhost:3000",
-//         credentials: true,
-//     })
-// )
+
 
 const allowedOrigins = [
     'http://localhost:3000',

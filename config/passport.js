@@ -8,7 +8,7 @@ passport.use(
         {
             clientID: process.env.GOOGLE_OAUTH_CLIENT_ID,
             clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-            callbackURL: "/api/auth/google/callback",
+            callbackURL: process.env.GOOGLE_CALLBACK_URL
         },
         (accessToken, refreshToken, profile, done) => {
             // Just pass Google profile to controller

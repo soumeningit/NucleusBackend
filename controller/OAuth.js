@@ -41,6 +41,7 @@ exports.signInWithGoogle = async (req, res) => {
             });
 
             const redirectURL = process.env.FRONTEND_URL;
+            console.log("rediredtURL : " + redirectURL);
             const url = `${redirectURL}/oauth-success/verify?token=${token}&userId=${data._id}&email=${encodeURIComponent(
                 data.email
             )}&userName=${encodeURIComponent(name)}&role=${encodeURIComponent(data.accountType)}`;
@@ -125,6 +126,7 @@ exports.signInWithGoogle = async (req, res) => {
         });
 
         const redirectURL = process.env.FRONTEND_URL;
+        console.log("rediredtURL : " + redirectURL);
         const url = `${redirectURL}/oauth-success/verify?token=${token}&userId=${data._id}&email=${encodeURIComponent(
             data.email
         )}&userName=${encodeURIComponent(name)}&role=${encodeURIComponent(data.accountType)}`;

@@ -1,6 +1,9 @@
 const Course = require("../models/Course")
 const Profile = require("../models/Profile")
+const RatingAndReview = require("../models/RatingAndReview");
+const EnrolledStudents = require("../models/EnrolledStudents");
 const User = require("../models/User")
+const CourseProgress = require("../models/CourseProgress");
 const { uploadFileToCloudinary } = require("../utils/fileUploader")
 
 // update profile : because alredy i made object of Profile and 
@@ -218,34 +221,76 @@ exports.updatePicture = async (req, res) => {
 // get enrolled courses of a user
 exports.getEnrolledCourse = async (req, res) => {
     try {
-
         console.log("inside getEnrolledCourse inside server.")
         const userId = req.user.id;
-        console.log("userId inside inside getEnrolledCourse in backend : ", userId)
-        const enrolledCourses = await User.findOne({ _id: userId }).populate({
-            path: "courses",
-            populate: {
-                path: "courseContent",
-                populate: {
-                    path: "subSection"
-                }
-            }
-        });
-        console.log("enrolledCourses : ", enrolledCourses)
 
-        if (!enrolledCourses) {
+        console.log("userId inside inside getEnrolledCourse in backend : ", userId)
+
+        const enrolledCoursesResp = await User.findOne({ _id: userId })
+            .select("courses courseProgress")
+            .populate({
+                path: "courses",
+                select: "courseName courseDescription price thumbnail courseContent",
+                populate: {
+                    path: "courseContent",
+                    select: "subSection",
+                }
+            });
+
+        // console.log("enrolledCourses : ", enrolledCoursesResp);
+
+        if (!enrolledCoursesResp) {
             return res.status(400).json({
                 success: false,
                 message: "No courses enrolled yet"
             })
         }
 
-        return res.status(200)
-            .json({
-                success: true,
-                message: "Courses fetched successfully",
-                enrolledCourses
-            })
+        const courseProgressDetails = await CourseProgress.find({
+            userId: userId,
+            courseId: { $in: enrolledCoursesResp.courses.map(course => course._id) }
+        });
+
+        // console.log("courseProgressDetails : ", courseProgressDetails);
+
+        const enrolledCourses = enrolledCoursesResp.courses;
+
+        let response = [];
+        let totalVideos = 0;
+        let video = {};
+        let completedVideos = {};
+
+        enrolledCourses.forEach((course) => {
+            console.log("course Id : ", course._id);
+            console.log("section : ", course.courseContent);
+            const courseProgress = courseProgressDetails.find(progress => progress.courseId.toString() === course._id.toString());
+            completedVideos[course._id] = courseProgress ? courseProgress.completedVideos.length : 0;
+            for (let section of course.courseContent) {
+                totalVideos += section.subSection.length;
+            }
+            video[course._id] = { totalVideos };
+            response.push({
+                totalVideos,
+                completedVideos: completedVideos[course._id],
+                courseId: course._id,
+                courseName: course.courseName,
+                courseDescription: course.courseDescription,
+                thumbnail: course.thumbnail,
+                price: course.price
+            });
+        });
+
+        console.log("totalVideos : ", totalVideos);
+        console.log("courseProgressDetails : ", courseProgressDetails);
+
+        console.log("response : ", response);
+
+        // Combine both into a single object for easier frontend use
+        return res.status(200).json({
+            success: true,
+            message: "Courses fetched successfully",
+            data: response
+        });
 
 
     } catch (error) {
@@ -320,7 +365,7 @@ exports.getUserDetails = async (req, res) => {
         console.log("req " + req);
         console.log("req.query : ", req.query);
 
-        const userId = req.query.userId;
+        const userId = req.query.userId || req.user.id;
 
         console.log("userId inside getUserDetails in backend : ", userId);
 
@@ -359,3 +404,140 @@ exports.getUserDetails = async (req, res) => {
 
     }
 }
+
+exports.analytics = async (req, res) => {
+    try {
+        console.log("inside analytics inside server.");
+        const userId = req.user.id;
+        console.log("userId inside analytics in backend : ", userId);
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "Need to login first",
+            });
+        }
+
+        console.log("req.query : ", req.query);
+
+        let requiredTime = parseInt(req.query.days) || 7; // default 7
+        console.log("requiredTime : ", requiredTime);
+
+        let startDate = null;
+        let isAllTime = false;
+
+        if (requiredTime > 30) {
+            isAllTime = true;
+        } else {
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - requiredTime);
+        }
+
+        // Get all courses by this instructor
+        const courses = await Course.find({ instructor: userId })
+            .select("courseName price enrolledData ratingAndReviews studentsEnrolled")
+            .populate({
+                path: "enrolledData",
+            })
+            .populate("ratingAndReviews");
+
+        // console.log("courses : ", courses);
+
+        if (!courses || courses.length === 0) {
+            console.log("No courses found for this instructor");
+            return res.status(200).json({
+                totalRevenue: 0,
+                totalEnrollments: 0,
+                averageRating: 0,
+                revenueTrend: [],
+                message: "No courses found for this instructor",
+            });
+        }
+
+        let totalRevenue = 0;
+        let totalEnrollments = 0;
+        let allRatings = [];
+
+        // Initialize daily trend map only if not all-time
+        const trendMap = {};
+        if (!isAllTime) {
+            for (let i = 0; i < requiredTime; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() - (requiredTime - 1 - i));
+                const key =
+                    i === requiredTime - 1
+                        ? "Today"
+                        : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                trendMap[key] = { revenue: 0, enrollments: 0 };
+            }
+        }
+
+        // console.log("trendMap initialized: ", trendMap);
+
+        // Process each course
+        for (const course of courses) {
+            console.log("Processing course: ", course);
+            const price = course.price || 0;
+
+            // Process each enrollment with real enrolledOn date
+            for (const enrollment of course.enrolledData) {
+                const enrollDate = new Date(enrollment.enrolledOn);
+
+                if (isAllTime || enrollDate >= startDate) {
+                    totalEnrollments += 1;
+                    totalRevenue += price;
+
+                    if (!isAllTime) {
+                        const key =
+                            enrollDate.toDateString() === new Date().toDateString()
+                                ? "Today"
+                                : enrollDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+                        if (trendMap[key]) {
+                            trendMap[key].enrollments += 1;
+                            trendMap[key].revenue += price;
+                        }
+                    }
+                }
+            }
+
+            // Collect ratings
+            for (const ratingObj of course.ratingAndReviews) {
+                allRatings.push(ratingObj.rating);
+            }
+        }
+
+        const averageRating =
+            allRatings.length > 0
+                ? allRatings.reduce((acc, val) => acc + val, 0) / allRatings.length
+                : 0;
+
+        let revenueTrend = [];
+        if (!isAllTime) {
+            revenueTrend = Object.keys(trendMap).map((key) => ({
+                name: key,
+                revenue: trendMap[key].revenue,
+                enrollments: trendMap[key].enrollments,
+            }));
+        }
+
+        console.log("totalRevenue: ", totalRevenue, " totalEnrollments: ", totalEnrollments, " averageRating: ", averageRating);
+        console.log("revenueTrend: ", revenueTrend);
+
+        return res.json({
+            totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+            totalEnrollments,
+            averageRating: parseFloat(averageRating.toFixed(1)),
+            revenueTrend: isAllTime ? [] : revenueTrend, // all-time → no daily breakdown
+            courses: courses
+        });
+
+    } catch (error) {
+        console.log("error in analytics: " + error);
+        return res.status(500).json({
+            success: false,
+            message: "Can't get analytics right now, please try after some time",
+        });
+    }
+};
+

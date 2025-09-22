@@ -13,8 +13,13 @@ const cors = require("cors");
 const { cloudinaryConnect } = require("./config/cloudinary");
 const fileUpload = require("express-fileupload");
 const dotenv = require("dotenv");
-const adminRoutes = require('./routes/Admin')
+const adminRoutes = require('./routes/AdminUpdated')
 const message = require('./routes/Message')
+const playground = require('./routes/PlaygroundRoute');
+const categoryRoute = require('./routes/CategoryRoute');
+const oauthRoute = require('./routes/OAuth');
+const passport = require("passport");
+require("./config/passport");
 
 dotenv.config();
 const PORT = process.env.PORT || 5000;
@@ -24,10 +29,11 @@ dbConnect();
 //middlewares
 app.use(express.json());
 app.use(cookieParser());
-
+app.use(passport.initialize());
 
 const allowedOrigins = [
     'http://localhost:3000',
+    'http://localhost:5173',
     'http://localhost:4000',
     'http://localhost:4001',
     'https://nucleus-edte.vercel.app',
@@ -35,16 +41,18 @@ const allowedOrigins = [
     'https://nucleusbackend.onrender.com'
 ];
 
-app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            let msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
-        }
-        return callback(null, true);
-    },
-}));
+app.use(
+    cors({
+        origin: function (origin, callback) {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
+        credentials: true,
+    })
+);
 
 app.use(
     fileUpload({
@@ -64,13 +72,10 @@ app.use("/api/v1/contact", contactUsRoute);
 app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/qanda", message);
+app.use("/api/v1/playground", playground);
+app.use("/api/v1/category", categoryRoute);
+app.use("/api/auth", oauthRoute);
 
-app.get("/", (req, res) => {
-    return res.json({
-        success: true,
-        message: "Server is running",
-    });
-});
 
 app.get("/", (req, res) => {
     return res.json({

@@ -8,7 +8,6 @@ const userSchema = new mongoose.Schema({
     },
     lastName: {
         type: String,
-        required: true,
         trim: true,
     },
     email: {
@@ -18,12 +17,12 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true
     },
     accountType: {
         type: String,
         required: true,
-        enum: ["Student", "Instructor", "Admin"]
+        enum: ["Student", "Instructor", "Admin"],
+        default: "Student"
     },
     additionalDetails: {
         type: mongoose.Schema.Types.ObjectId,
@@ -38,7 +37,6 @@ const userSchema = new mongoose.Schema({
     ],
     image: {
         type: String,
-        required: true
     },
     token: {
         type: String,
@@ -51,7 +49,29 @@ const userSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "CourseProgress",
         }
-    ]
-});
+    ],
+    accountStatus: {
+        type: String,
+        enum: ["pending", "active", "suspended", "deactivated"],
+        default: "active"
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    emailVerified: {
+        type: Boolean,
+        default: false
+    },
+    isOAuthUser: {
+        type: Boolean,
+        default: false
+    },
+    oAuthData: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "OAuthUser"
+    }
+
+}, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

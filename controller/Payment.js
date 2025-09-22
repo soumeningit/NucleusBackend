@@ -8,6 +8,10 @@ const { PaymentSuccessmail } = require("../mail/templates/PaymentSuccessmail")
 const mongoose = require("mongoose");
 const { deleteItemFromCart } = require("./Cart")
 const CourseProgress = require("../models/CourseProgress")
+const Payment = require("../models/Payment")
+const PaymentLog = require("../models/PaymentLog")
+const EnrolledStudents = require("../models/EnrolledStudents")
+const Razorpay = require("razorpay")
 
 
 require("dotenv")
@@ -16,13 +20,13 @@ exports.capturePayment = async (req, res) => {
     try {
 
         console.log("INSIDE CAPTURE PAYMENT INSIDE SERVER....")
-        const { courses } = req?.body;
+        const { courseId } = req?.body;
         const userId = req?.user.id;
 
-        console.log("courses inside capturePayment : ", courses);
+        console.log("courseId inside capturePayment : ", courseId);
         console.log("userId inside capturePayment : ", userId);
 
-        if (courses.length === 0) {
+        if (!courseId) {
             return res.status(400)
                 .json({
                     success: false,
@@ -30,8 +34,46 @@ exports.capturePayment = async (req, res) => {
                 })
         }
 
-        let totalAmount = 0;
+        // let totalAmount = 0;
+        // let cid = [];
+        // let uid;
 
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        const courseResp = await Course.findById(courseId);
+        if (!courseResp) {
+            return res.status(400).json({
+                success: false,
+                message: "Course not found"
+            })
+        }
+
+        console.log("courseResp inside capturePayment : ", courseResp);
+
+        const uid = new mongoose.Types.ObjectId(userId);
+        const cid = new mongoose.Types.ObjectId(courseId);
+
+        if (courseResp.studentsEnrolled.includes(uid)) {
+            console.log("User is already enrolled in the course");
+            return res.status(409)
+                .json({
+                    success: false,
+                    message: "You have already enrolled in this course"
+                })
+        }
+
+        const totalAmount = courseResp.price;
+        console.log("totalAmount : ", totalAmount)
+
+
+
+        /*
         for (let course_id of courses) {
             let course;
             try {
@@ -46,7 +88,8 @@ exports.capturePayment = async (req, res) => {
                 console.log("course inside capturePayment", course);
 
                 // const uid = new mongoose.Types.ObjectId(userId)
-                const uid = new mongoose.Types.ObjectId(userId);
+                uid = new mongoose.Types.ObjectId(userId);
+                cid.push(new mongoose.Types.ObjectId(course_id));
 
                 console.log("uid in capture payment : ", uid);
 
@@ -68,6 +111,7 @@ exports.capturePayment = async (req, res) => {
                     })
             }
         }
+        */
 
         const options = {
             amount: totalAmount * 100,
@@ -75,11 +119,11 @@ exports.capturePayment = async (req, res) => {
             receipt: Math.random(Date.now()).toString()
         };
 
-        const order = await instance.orders.create(options
-            //     function (err, order) {
-            //     console.log("order in Payment controller: " + order);
-            // }
-        );
+        const order = await instance.orders.create(options);
+
+        order.secret_id = process.env.RAZORPAY_KEY_ID;
+
+        // console.log("order : " + order)
 
         if (!order) {
             return res.status(400)
@@ -89,13 +133,33 @@ exports.capturePayment = async (req, res) => {
                 })
         }
 
-        order.secret_id = process.env.RAZORPAY_KEY_ID;
+        const payment = await Payment.create({
+            amount: totalAmount * 100,
+            user: uid,
+            course: cid,
+            razorpayOrderId: order.id,
+            paymentStatus: "pending",
+            paymentTime: new Date(),
+        });
+
+        if (!payment) {
+            return res.status(400)
+                .json({
+                    success: false,
+                    message: "Payment initiation failed"
+                })
+        }
+
+        console.log("payment inside capturePayment : ", payment);
 
         return res.status(200)
             .json({
                 success: true,
                 message: "Order created successfully",
-                data: order
+                data: order,
+                paymentId: payment._id,
+                name: user.firstName + " " + user.lastName,
+                email: user.email
             })
 
     } catch (error) {
@@ -115,24 +179,27 @@ exports.verifyPayment = async (req, res) => {
         const razorpay_order_id = req?.body.razorpay_order_id;
         const razorpay_signature = req?.body.razorpay_signature;
         const userId = req?.user.id;
-        const { courses } = req?.body;
+        const { courseId } = req?.body;
+        const { paymentId } = req?.body;
+
+        console.log("paymentId in verify payment : ", paymentId);
 
         console.log("razorpay_payment_id : " + razorpay_payment_id, " razorpay_order_id : " + razorpay_order_id +
-            " razorpay_signature : " + razorpay_signature + " userId : " + userId + " courses : " + courses
+            " razorpay_signature : " + razorpay_signature + " userId : " + userId + " courseId : " + courseId
         )
 
-        const { courseId } = courses;
         console.log("courseId in verify payment : ", courseId);
+        console.log("paymentId in verify payment : ", paymentId);
 
         if (
             !razorpay_payment_id ||
             !razorpay_order_id ||
             !razorpay_signature ||
             !userId ||
-            !courses
+            !courseId ||
+            !paymentId
         ) {
             console.log("All fields are nedded....")
-            toast.error("All fields are nedded....")
         }
 
 
@@ -142,9 +209,43 @@ exports.verifyPayment = async (req, res) => {
             .digest('hex');
 
         if (expectedSignature == razorpay_signature) {
-            await enrolledStudent(userId, courses, res)
+            const payment = await Payment.findOneAndUpdate(
+                { _id: paymentId },
+                {
+                    razorpayPaymentId: razorpay_payment_id,
+                    razorpayOrderId: razorpay_order_id,
+                    paymentStatus: "completed",
+                    paymentTime: new Date()
+                }
+            )
+            console.log("payment after update : ", payment);
+            await enrolledStudent(userId, courseId, res, payment?.amount / 100);
             console.log("Payment verified");
-            deleteItemFromCart(courseId);
+            // deleteItemFromCart(courseId);
+
+            const paymentDetails = await getPaymentDetails(razorpay_payment_id);
+
+            console.log("paymentDetails : ", paymentDetails);
+
+            if (!paymentDetails) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to fetch payment details"
+                })
+            }
+
+            const paymentLog = await PaymentLog.create({
+                paymentId: payment._id,
+                status: "completed",
+                currency: paymentDetails?.currency,
+                amount: paymentDetails?.amount / 100,
+                razorpayStatus: paymentDetails?.status,
+                razorpayOrderId: paymentDetails?.order_id,
+                cardDetails: paymentDetails?.card
+            });
+
+            console.log("paymentLog : ", paymentLog);
+
             return res.status(200).json({
                 success: true,
                 message: "Payment verified successfully",
@@ -164,16 +265,83 @@ exports.verifyPayment = async (req, res) => {
 }
 
 
-const enrolledStudent = async (userId, courses, res) => {
+const enrolledStudent = async (userId, courseId, res, amountPaid) => {
     try {
         console.log("enrolledStudent....")
-        if (!userId || !courses) {
+        if (!userId || !courseId) {
             return res.status(401).json({
                 success: false,
                 message: "User not found"
             })
         }
 
+        const enrolledStudentsEntry = await EnrolledStudents.create({
+            courseId: courseId,
+            student: userId,
+            enrolledOn: new Date(),
+            amountPaid: Number(amountPaid)
+        });
+
+        console.log("enrolledStudentsEntry inside enrolledStudent: ", enrolledStudentsEntry)
+
+        if (!enrolledStudentsEntry) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to create enrolled students entry"
+            })
+        }
+
+        const enrolledCourse = await Course.findOneAndUpdate(
+            { _id: courseId },
+            {
+                $push: {
+                    studentsEnrolled: userId,
+                    enrolledData: enrolledStudentsEntry._id
+                }
+            },
+            { new: true },
+        )
+
+        console.log("enrolledCourse inside enrolledStudent: ", enrolledCourse)
+
+        if (!enrolledCourse) {
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            })
+        }
+        const courseProgress = await CourseProgress.create({
+            courseId: courseId,
+            userId: userId,
+            courseProgress: []
+        });
+
+        console.log("courseProgress inside enrolledStudent: ", courseProgress)
+
+        const enrolledStudent = await User.findByIdAndUpdate(
+            userId,
+            {
+                $push: {
+                    courses: courseId,
+                    courseProgress: courseProgress._id
+                },
+            },
+            { new: true }
+        )
+
+        console.log("enrolledStudent inside enrolledStudent: ", enrolledStudent)
+
+        if (!enrolledStudent) {
+            console.log("User not found")
+        }
+
+        const emailResponse = await mailSender(
+            enrolledStudent.email,
+            "Order Complete! Starts Learning",
+            CourseEnrollmentEmail(enrolledCourse?.courseName, enrolledStudent?.firstName)
+        )
+
+        /*
         for (let courseId of courses) {
             try {
                 console.log("enrolledStudent....")
@@ -226,6 +394,7 @@ const enrolledStudent = async (userId, courses, res) => {
             }
 
         }
+        */
 
         return {
             success: true,
@@ -284,6 +453,19 @@ exports.sendPaymentSuccessEmail = async (req, res) => {
             success: false,
             message: "Error in sendPaymentSuccessEmail : " + error
         })
+    }
+}
+
+
+async function getPaymentDetails(paymentId) {
+
+    try {
+        const payment = await instance.payments.fetch(paymentId, { "expand[]": "card" });
+        console.log("payment inside getPaymentDetails: ", payment);
+        return payment;
+    } catch (error) {
+        console.log("Error fetching payment details: ", error);
+        return null;
     }
 }
 

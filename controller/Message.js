@@ -12,6 +12,10 @@ exports.createMessage = async (req, res) => {
         const { message } = req.body;
         const { courseId, sectionId, subSectionId } = req.body;
 
+        console.log("req.body : ", req.body);
+
+        console.log("userId, message, courseId, sectionId, subSectionId : ", userId, message, courseId, sectionId, subSectionId);
+
         if (!userId || !message || !courseId || !sectionId || !subSectionId) {
             return res.status(400)
                 .json({

@@ -1,45 +1,43 @@
-// Import the required modules
 const express = require("express")
 const router = express.Router()
 
-// Import the Controllers
-
-// Course Controllers Import
 const {
   createCourse,
   getAllCourses,
   getCoursedetails,
-  // getFullCourseDetails,
   editCourse,
   getInstructorCourses,
-  // deleteCourse,
   publishCourse,
-  getCourseById
+  getCourseById,
+  createCourseUpdated,
+  getAllCoursesUpdated,
+  getCourseByIdUpdated,
+  getCourseDetailsForEditCourse,
+  searchCourses,
+  getCourseByCategory,
+  markedVideoCompleted,
+  getFullCourseDetails,
+  generateCourseCertificate
 } = require("../controller/Course")
 
-
-// Categories Controllers Import
 const {
   getAllCategories,
   createCategory,
   categoryPageDetails,
 } = require("../controller/Category")
 
-// Sections Controllers Import
 const {
   createSection,
   updateSection,
   deleteSection,
 } = require("../controller/Section")
 
-// Sub-Sections Controllers Import
 const {
   createSubSection,
   updateSubSection,
   deleteSubSection,
 } = require("../controller/SubSection")
 
-// Rating Controllers Import
 const {
   createRating,
   getAverageRating,
@@ -50,58 +48,36 @@ const {
   courseProgress
 } = require("../controller/courseProgress");
 
-// Importing Middlewares
 const { auth, isInstructor, isStudent, isAdmin } = require("../middlewares/AuthNMid")
 
-// ********************************************************************************************************
-//                                      Course routes
-// ********************************************************************************************************
-
-// Courses can Only be Created by Instructors
-router.post("/createCourse", auth, isInstructor, createCourse)
-//Add a Section to a Course
+router.post("/createCourse", auth, isInstructor, createCourseUpdated)
 router.post("/createSection", auth, isInstructor, createSection)
-// Update a Section
 router.post("/updateSection", auth, isInstructor, updateSection)
-// Delete a Section
 router.post("/deleteSection", auth, isInstructor, deleteSection)
-// Edit Sub Section
 router.post("/updateSubSection", auth, isInstructor, updateSubSection)
-// Delete Sub Section
 router.post("/deleteSubSection", auth, isInstructor, deleteSubSection)
-// Add a Sub Section to a Section
 router.post("/addSubSection", auth, isInstructor, createSubSection)
-// Get all Registered Courses
 router.get("/getAllCourses", getAllCourses)
-// Get Details for a Specific Courses
-router.post("/getCourseDetails", getCoursedetails)
-// POST draft course id during course creation
+router.get("/get-all-courses", getAllCoursesUpdated)
+router.get("/getCourseDetails", getCoursedetails)
 router.post("/publishCourse", auth, isInstructor, publishCourse)
-// Get Details for a Specific Courses
-// router.post("/getFullCourseDetails", auth, getFullCourseDetails)
-// Edit Course routes
 router.post("/editCourse", auth, isInstructor, editCourse)
-// Get all Courses Under a Specific Instructor
 router.get("/getInstructorCourses", auth, isInstructor, getInstructorCourses)
-// Delete a Course
-// router.delete("/deleteCourse", deleteCourse)
-
 router.post("/updateCourseProgress", auth, isStudent, courseProgress);
-
 router.get("/getCourseById", auth, isInstructor, getCourseById);
+router.get("/get-course-details", getCourseByIdUpdated);
+router.get("/get-course-details-for-edit", auth, isInstructor, getCourseDetailsForEditCourse);
+router.get("/search", searchCourses);
+router.get("/get-courses-by-category", getCourseByCategory);
+router.post("/markedVideoCompleted", auth, isStudent, markedVideoCompleted);
+router.get("/getFullCourseDetails", auth, getFullCourseDetails);
+router.post("/generate-course-certificate", auth, isStudent, generateCourseCertificate);
 
-// ********************************************************************************************************
-//                                      Category routes (Only by Admin)
-// ********************************************************************************************************
-// Category can Only be Created by Admin
-// TODO: Put IsAdmin Middleware here
+
 router.post("/createCategory", auth, isAdmin, createCategory)
 router.get("/getAllCategories", getAllCategories)
 router.post("/getCategoryPageDetails", categoryPageDetails)
 
-// ********************************************************************************************************
-//                                      Rating and Review
-// ********************************************************************************************************
 router.post("/createRating", auth, isStudent, createRating)
 router.get("/getAverageRating", getAverageRating)
 router.get("/getReviews", getAllRating)

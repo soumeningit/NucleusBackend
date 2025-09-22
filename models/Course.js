@@ -7,6 +7,9 @@ const courseSchema = new mongoose.Schema({
     courseDescription: {
         type: String,
     },
+    shortDescription: {
+        type: String,
+    },
     instructor: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -48,12 +51,17 @@ const courseSchema = new mongoose.Schema({
         ref: "User",
         // required: true
     }],
+    enrolledData: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "EnrolledStudents"
+    }],
     instructions: {
         type: [String],
     },
     status: {
         type: String,
         enum: ["Draft", "Published"],
+        default: "Draft"
     },
     createdAt: {
         type: Date,
@@ -66,6 +74,6 @@ const courseSchema = new mongoose.Schema({
     payment: {
         type: String,
     }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("Course", courseSchema);

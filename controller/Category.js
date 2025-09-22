@@ -145,3 +145,43 @@ exports.categoryPageDetails = async (req, res) => {
         })
     }
 }
+
+exports.createNewCategory = async (req, res) => {
+    try {
+        console.log("Inside Create Category..")
+        const { category } = req.body;
+
+        if (category.length === 0) {
+            return res.status(400)
+                .json({
+                    error: "Please fill all the fields"
+                });
+        }
+
+        const categoryResponse = await Category.insertMany(
+            category.map((data) => ({
+                name: data.name,
+                description: data.description || "No description",
+                course: []
+            }))
+        );
+        console.log("categoryResponse : " + categoryResponse);
+
+        if (!categoryResponse) {
+            return res.status(500).json({ message: "Failed to create category" });
+        }
+
+        return res.status(200)
+            .json({
+                success: true,
+                message: "Category created successfully",
+            });
+    } catch (error) {
+        console.log(error)
+        return res.status(400)
+            .json({
+                success: false,
+                message: "Failed!"
+            })
+    }
+}

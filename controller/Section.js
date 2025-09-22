@@ -31,7 +31,7 @@ exports.createSection = async (req, res) => {
             .exec();
 
         // return response
-        return res.status(200)
+        return res.status(201)
             .json({
                 success: true,
                 message: "Section created successfully",

@@ -16,7 +16,7 @@ exports.createSubSection = async (req, res) => {
 
         console.log("inside createSubSection : ", sectionId, title, timeDuration, description, video)
         // validate the data
-        if (!sectionId || !title || !timeDuration || !description || !video) {
+        if (!sectionId || !title || !video) {
             return res.status(400)
                 .json({
                     success: false,
@@ -26,11 +26,11 @@ exports.createSubSection = async (req, res) => {
         require("dotenv").config();
         // upload video to cloudinary
         const uploadVideoDetails = await uploadFileToCloudinary(video, process.env.FOLDER_NAME);
-        // console.log("uploadVideoDetails : ", uploadVideoDetails)
+        console.log("uploadVideoDetails : ", uploadVideoDetails)
         // create a SubSection
         const newSubSection = await SubSection.create({
             title: title,
-            timeDuration: timeDuration,
+            timeDuration: timeDuration || "",
             description: description,
             videoUrl: uploadVideoDetails.secure_url,
         });

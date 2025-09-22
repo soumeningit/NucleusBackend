@@ -152,7 +152,7 @@ exports.signUpController = async (req, res) => {
 
         user.password = null;
         // send a successfull response with user data
-        res.status(200)
+        res.status(201)
             .json({
                 success: true,
                 message: "User Registered Successfully",
@@ -204,7 +204,7 @@ exports.logInController = async (req, res) => {
             }
 
             const token = jwt.sign(payload, process.env.JWT_PRIVATEKEY, {
-                expiresIn: "2 days"
+                expiresIn: "2 days" // token will expire in 2 days
             });
 
             const userData = {

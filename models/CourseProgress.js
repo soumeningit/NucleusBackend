@@ -12,7 +12,15 @@ const courseProgressSchema = new mongoose.Schema({
     completedVideos: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "SubSection",
-    }]
+    }],
+    lastWatched: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "SubSection"
+    },
+    progressPercentage: {
+        type: Number,
+        default: 0
+    }
 });
 
 module.exports = mongoose.model("CourseProgress", courseProgressSchema);

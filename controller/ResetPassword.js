@@ -53,7 +53,7 @@ exports.resetPasswordToken = async (req, res) => {
             { new: true }
         );
         console.log("DETAILS", updatedDetails);
-        const url = `http://localhost:3000/update-password/${token}`;
+        const url = `http://localhost:5173/update-password/${token}`;
         // const url = process.env.NODE_ENV === "production"
         //     ? `https://nucleus-nine-zeta.vercel.app/update-password/${token}`
         //     : `http://localhost:3000/update-password/${token}`;

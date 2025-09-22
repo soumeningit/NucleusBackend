@@ -9,6 +9,7 @@ exports.auth = async (req, res, next) => {
     try {
         // extract token
         // const token = req.header("Authorization").replace("Bearer ", "") || req.cookies.token || req.body.token
+        // console.log("Inside auth middleware : ")
         const token =
             req.cookies.token ||
             req.body.token ||

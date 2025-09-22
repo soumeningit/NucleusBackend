@@ -11,7 +11,6 @@ const CourseProgress = require("../models/CourseProgress")
 const OAuthUser = require("../models/OAuthUser")
 const Certificate = require("../models/Certificate")
 const crypto = require("crypto")
-const { generateCertificate } = require("../utils/GenerateCertificate");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");

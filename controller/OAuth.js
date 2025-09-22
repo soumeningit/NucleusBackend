@@ -40,7 +40,7 @@ exports.signInWithGoogle = async (req, res) => {
                 expiresIn: "2 days" // token will expire in 2 days
             });
 
-            const redirectURL = process.env.FRONTEND_DEV_URL;
+            const redirectURL = process.env.FRONTEND_URL;
             const url = `${redirectURL}/oauth-success/verify?token=${token}&userId=${data._id}&email=${encodeURIComponent(
                 data.email
             )}&userName=${encodeURIComponent(name)}&role=${encodeURIComponent(data.accountType)}`;
@@ -124,7 +124,7 @@ exports.signInWithGoogle = async (req, res) => {
             expiresIn: "2 days" // token will expire in 2 days
         });
 
-        const redirectURL = process.env.FRONTEND_DEV_URL;
+        const redirectURL = process.env.FRONTEND_URL;
         const url = `${redirectURL}/oauth-success/verify?token=${token}&userId=${data._id}&email=${encodeURIComponent(
             data.email
         )}&userName=${encodeURIComponent(name)}&role=${encodeURIComponent(data.accountType)}`;
